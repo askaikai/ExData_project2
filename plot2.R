@@ -1,0 +1,32 @@
+plot2 = function(){
+  
+  # Have total emissions from PM2.5 decreased in the Baltimore City, 
+  # Maryland (fips == "24510") from 1999 to 2008? 
+  # Use the base plotting system to make a plot answering this question.
+  
+  # first, let's make sure we are in the right directory
+  setwd('~/Documents/Coursera//ExploratoryDataAnalysis//ExData_project2')
+  
+  # read in data & code 
+  NEI <- readRDS("../data/summarySCC_PM25.rds")
+  SCC <- readRDS("../data/Source_Classification_Code.rds")
+  
+  # select data just from Baltimore
+  Bmore=NEI[NEI$fips == "24510",]
+  year=c(1999,2002,2005,2008)
+  sumPM25 <- function(x) sum(Bmore$Emissions[Bmore$year==x])
+  totalPM25 = sapply(year, sumPM25)
+  
+  # now plot
+  png(file='plot2.png')
+  
+  plot(totalPM25/(10^3),ann=FALSE, xaxt="n")
+  lines(totalPM25/(10^3))
+  title(main='Total PM2.5 Emission in Baltimore City from 1999 to 2008',
+        xlab='Year', ylab='Total Emission (10^3 tons)')
+  axis(1, at=c(1:4),
+       labels=c("1999","2002","2005","2008"))
+  
+  dev.off()
+  
+}
