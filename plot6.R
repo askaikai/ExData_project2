@@ -1,0 +1,82 @@
+plot6 = function(){
+  
+  # Compare emissions from motor vehicle sources in Baltimore City with 
+  # emissions from motor vehicle sources in Los Angeles County, California 
+  # (fips == "06037"). Which city has seen greater changes over time in 
+  # motor vehicle emissions?
+  
+  # first, let's make sure we are in the right directory
+  setwd('~/Documents/Coursera//ExploratoryDataAnalysis//ExData_project2')
+  library(ggplot2)
+  
+  # read in data & code 
+  NEI <- readRDS("../data/summarySCC_PM25.rds")
+  SCC <- readRDS("../data/Source_Classification_Code.rds")
+  
+  ##### Run this to find out which variables contain the word "vehicle"
+  #a=matrix(0,dim(SCC)[2],2)
+  #a=as.data.frame(a)
+  #for (i in 1:dim(SCC)[2]){
+  #  a[i,1] = names(SCC)[i]
+  #  if(length(grep("vehicle", SCC[,i],ignore.case=TRUE))>0) {
+  #    a[i,2] = length(grep("vehicle", SCC[,i],ignore.case=TRUE))
+  #  }
+  #}
+  #print(a)
+  ### from here, we know that Short.Name, EI.Sector, SCC.Level.2&3&4 
+  ### have a word "vehicle" in them
+  
+  # select data with "vehicle" in them
+  thisSCC = SCC$SCC[unique(c(grep("vehicle", SCC$Short.Name, ignore.case=TRUE), grep("vehicle", SCC$EI.Sector, ignore.case=TRUE), 
+                             grep("vehicle",SCC$SCC.Level.Two, ignore.case=TRUE), grep("vehicle",SCC$SCC.Level.Three, ignore.case=TRUE),
+                             grep("vehicle", SCC$SCC.Level.Four, ignore.case=TRUE)))]
+  vehicleData <- subset(NEI, SCC %in% thisSCC)
+  Bmore=vehicleData[vehicleData$fips == "24510",]
+  LA = vehicleData[vehicleData$fips == "06037",]
+  
+  # calculate total Emissions
+  year=c(1999,2002,2005,2008)
+  sumPM25 = function(x,data){  
+    sum(data$Emissions[data$year==x])
+  }
+  BmorePM25 = sapply(year, sumPM25, Bmore)
+  LAPM25 = sapply(year, sumPM25, LA)
+  
+  # organize data for plotting
+  totalPM25 = data.frame(c(BmorePM25,LAPM25))
+  colnames(totalPM25)=c("Emissions")
+  totalPM25$city=c(rep("Baltimore",4),rep("LA",4))
+  totalPM25$year=c(rep(seq(1999, 2008, by = 3),2))
+  totalPM25$Emissions=as.numeric(format(round(totalPM25$Emissions, 3), nsmall = 3))
+  
+  # for annotation
+  getCoef = function(x){
+    lm.fit = lm(Emissions~year, data=totalPM25, subset=totalPM25$city==x)
+    lm.fit$coefficients[[2]]
+  }
+  city=c("Baltimore","LA")
+  coef = sapply(city,getCoef)
+  coef=as.numeric(format(round(coef, 2), nsmall = 2))
+  ann_text = data.frame(year = rep(mean(c(1998, 2009)),2),
+                        Emissions = c(2000,2000),
+                        lab = c(paste("coef=", coef)), 
+                        city = factor(c("Baltimore","LA")))
+
+  
+  # now plot
+  g = ggplot(totalPM25, aes(year, Emissions)) + geom_point(size=.8) 
+  g = g + facet_grid(.~city) + theme_grey(base_size = 4) + 
+    geom_smooth(method="lm", se=FALSE, col="steelblue", size=.3) + 
+    labs(list(title = "PM2.5 Emission from motor vehicle sources: \n 
+              Baltimore vs. LA", 
+              x = "year", y = "Total Emission (ton)")) + 
+    scale_x_continuous(limits=c(1998, 2009), breaks = seq(1999, 2008, by = 3),
+                       labels=c("1999","2002","2005","2008")) + 
+    geom_text(aes(x=rep(seq(1999, 2008, by = 3),2), y=Emissions+500, 
+                      label=as.character(Emissions), group=NULL),
+              data=totalPM25, size = 1, color = "black") +
+    geom_text(aes(label=lab), data=ann_text, size = 1.5)
+  
+  ggsave(filename="plot6.png",plot=g,width=8,height=6,units="cm")
+  
+}
