@@ -1,0 +1,55 @@
+plot5 = function(){
+  
+  # How have emissions from motor vehicle sources changed from 1999–2008 
+  # in Baltimore City?
+  
+  # first, let's make sure we are in the right directory
+  setwd('~/Documents/Coursera//ExploratoryDataAnalysis//ExData_project2')
+  library(ggplot2)
+  
+  # read in data & code 
+  NEI <- readRDS("../data/summarySCC_PM25.rds")
+  SCC <- readRDS("../data/Source_Classification_Code.rds")
+  
+  ##### Run this to find out which variables contain the word "vehicle"
+  #a=matrix(0,dim(SCC)[2],2)
+  #a=as.data.frame(a)
+  #for (i in 1:dim(SCC)[2]){
+  #  a[i,1] = names(SCC)[i]
+  #  if(length(grep("vehicle", SCC[,i],ignore.case=TRUE))>0) {
+  #    a[i,2] = length(grep("vehicle", SCC[,i],ignore.case=TRUE))
+  #  }
+  #}
+  #print(a)
+  ### from here, we know that Short.Name, EI.Sector, SCC.Level.2&3&4 
+  ### have a word "vehicle" in them
+  
+  # select data with "vehicle" in them
+  thisSCC = SCC$SCC[unique(c(grep("vehicle", SCC$Short.Name, ignore.case=TRUE), grep("vehicle", SCC$EI.Sector, ignore.case=TRUE), 
+                             grep("vehicle",SCC$SCC.Level.Two, ignore.case=TRUE), grep("vehicle",SCC$SCC.Level.Three, ignore.case=TRUE),
+                             grep("vehicle", SCC$SCC.Level.Four, ignore.case=TRUE)))]
+  vehicleData <- subset(NEI, SCC %in% thisSCC)
+  Bmore=vehicleData[vehicleData$fips == "24510",]
+  
+  year=c(1999,2002,2005,2008)
+  sumPM25 <- function(x) sum(Bmore$Emissions[Bmore$year==x])
+  totalPM25 = sapply(year, sumPM25)
+  totalPM25 = data.frame(totalPM25)
+  colnames(totalPM25)=c("Emissions")
+  totalPM25$year=seq(1999, 2008, by = 3)
+  totalPM25$Emissions=as.numeric(format(round(totalPM25$Emissions, 3), nsmall = 3))
+  
+  # now plot
+  g = ggplot(totalPM25, aes(year, Emissions)) + geom_point(size=.8)
+  g = g + theme_grey(base_size = 5) + 
+    geom_smooth(method="lm", se=FALSE, col="steelblue", size=.3) + 
+    labs(list(title = "PM2.5 Emission in Baltimore City from vehicle between 1999 and 2008", 
+              x = "year", y = "Total Emission (tons)")) + 
+    scale_x_continuous(limits=c(1998, 2009), breaks = seq(1999, 2008, by = 3),
+                       labels=c("1999","2002","2005","2008")) + 
+    annotate("text", x=seq(1999, 2008, by = 3), y=c(totalPM25$Emissions-10),
+             label=as.character(totalPM25$Emissions),size=1)
+  
+  ggsave(filename="plot5.png",plot=g,width=8,height=6,units="cm")
+  
+}
